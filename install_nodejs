@@ -1,0 +1,22 @@
+check winget trước 
+- winget --version
+chạy cái này trước tiên để cài fnm đã 
+- winget install Schniz.fnm
+tiếp theo chạy cái này để download  nodejs
+- fnm install 18
+sau đó check local file bằng lệnh này 
+- fnm install 18 -> nó sẽ hiện là file này đã được install ở folder ...
+- where node
+tiếp theo dán path mục installation vào path là oke
+test node bằng cách
+
+npm -v
+npx -v
+node -v
+
+test thêm với yarn nè in in 
+in in 
+test tiep ne kikiki en en en en en nenene
+kikikiki
+
+uia uia uia 
