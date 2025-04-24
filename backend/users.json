@@ -1,0 +1,10 @@
+{
+    "vming12345": {
+        "email": "test@gmail.com",
+        "password": "scrypt:32768:8:1$OpybEVTfdh222J9q$5e8101eac707a27d7278189c90640c195433e70bed213f10cbae4a3d8e805fa4003923b928998ad37ee9a92dd577d5c5531e40657391e8c5b78c5aea2bbdf8fd"
+    },
+    "vminnnnn": {
+        "email": "vminnnn@gmail.com",
+        "password": "scrypt:32768:8:1$RoTQ3QOArJWVgJcz$1bc64efc189ad6495c2f8b74d892b57298d875aaed783c2d4ea4b2c1a5eb3038b573acd06be05a1dae2cf42cb7df65b927d37c9a714d86fab8de6737b9a1b6e6"
+    }
+}

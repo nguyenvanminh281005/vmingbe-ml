@@ -10,6 +10,9 @@ from flask_cors import CORS
 import os
 from datetime import datetime
 from extensions import mail
+
+
+
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
@@ -394,3 +397,38 @@ def share_results():
             'status': 'error',
             'message': f'Có lỗi xảy ra: {str(e)}'
         }), 500
+        
+        
+from openai import OpenAI
+from dotenv import load_dotenv
+load_dotenv()
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+@auth_bp.route('/get_advice', methods=['POST'])
+def get_advice():
+    data = request.get_json()
+    features = data.get('features', [])
+    prediction = data.get('prediction', '')
+
+    if prediction.lower() != 'positive' and prediction.lower() != 'parkinson detected':
+        return jsonify({'advice': 'Dữ liệu không yêu cầu lời khuyên.'})
+
+    prompt = f"""Một bệnh nhân có các đặc điểm sau: {features}.
+    Dựa trên kết quả là dương tính với Parkinson, hãy đưa ra một số lời khuyên hữu ích để quản lý và điều trị tình trạng này.
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # hoặc model bạn chọn
+            messages=[
+                {"role": "system", "content": "Bạn là một bác sĩ chuyên về thần kinh."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
+            temperature=0.7
+        )
+        advice = response.choices[0].message.content
+        return jsonify({'advice': advice})
+    except Exception as e:
+        print("GPT Error:", e)
+        return jsonify({'advice': 'Không thể lấy lời khuyên từ chuyên gia GPT.'}), 500

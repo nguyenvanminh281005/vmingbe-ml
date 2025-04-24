@@ -33,7 +33,7 @@ def predict():
             features = scaler.transform(features)
 
         prediction = model.predict(features)[0]
-        result = "Parkinson's Detected" if prediction == 1 else "Healthy"
+        result = "Parkinson Detected" if prediction == 1 else "Healthy"
 
         print("Prediction Result:", result)
         return jsonify({'prediction': result})
@@ -41,3 +41,4 @@ def predict():
     except Exception as e:
         print("Error:", str(e))
         return jsonify({'error': str(e)}), 500
+
