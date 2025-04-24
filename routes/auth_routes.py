@@ -413,9 +413,17 @@ def get_advice():
     if prediction.lower() != 'positive' and prediction.lower() != 'parkinson detected':
         return jsonify({'advice': 'Dữ liệu không yêu cầu lời khuyên.'})
 
-    prompt = f"""Một bệnh nhân có các đặc điểm sau: {features}.
-    Dựa trên kết quả là dương tính với Parkinson, hãy đưa ra một số lời khuyên hữu ích để quản lý và điều trị tình trạng này.
-    """
+    prompt = f"""Bạn là một chuyên gia tư vấn y tế giàu kinh nghiệm, chuyên về bệnh Parkinson.
+    Một bệnh nhân có các đặc điểm sau: {features}.
+    Dựa trên kết quả chẩn đoán dương tính với Parkinson, hãy đưa ra một danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện
+    để giúp bệnh nhân quản lý và điều trị tình trạng này một cách hiệu quả. Hãy tập trung vào các khía cạnh như:
+    - Dùng thuốc và tuân thủ điều trị
+    - Thay đổi lối sống và chế độ ăn uống
+    - Tập luyện thể chất và phục hồi chức năng
+    - Hỗ trợ tâm lý và xã hội
+    - Theo dõi và quản lý triệu chứng
+    Đảm bảo lời khuyên của bạn dễ hiểu, thực tế và phù hợp với tình trạng của bệnh nhân."""
+
 
     try:
         response = client.chat.completions.create(
