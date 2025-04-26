@@ -6,5 +6,9 @@
     "vminnnnn": {
         "email": "vminnnn@gmail.com",
         "password": "scrypt:32768:8:1$RoTQ3QOArJWVgJcz$1bc64efc189ad6495c2f8b74d892b57298d875aaed783c2d4ea4b2c1a5eb3038b573acd06be05a1dae2cf42cb7df65b927d37c9a714d86fab8de6737b9a1b6e6"
+    },
+    "vming123456": {
+        "email": "test1@gmail.com",
+        "password": "scrypt:32768:8:1$BBV6Ued2cCmam98T$1d78dddd6b4600dafaea43262d03c5bb11cbb4cdbf4eb2961b81b99401a1eb87e744cd09d609936d6b39be0362920b1cf670cf6059684227005fdf321217b02f"
     }
 }
