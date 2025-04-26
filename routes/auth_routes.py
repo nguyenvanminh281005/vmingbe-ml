@@ -425,18 +425,17 @@ def share_results():
 
         
         
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 import os
 import json
 from flask import jsonify, request
 
-# Load environment variables from .env file
 load_dotenv()
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY")
 
-# Set OpenAI API key from environment variable
-openai.api_key = os.environ.get("OPENAI_API_KEY")
-
+)
 
 @auth_bp.route('/get_advice', methods=['POST'])
 def get_advice():
@@ -467,17 +466,18 @@ def get_advice():
     """
     
     try:
-        response = openai.Completion.create(
-            model="gpt-4",
-            messages=[  # Đảm bảo rằng bạn sử dụng đúng dạng chat completion
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            messages=[
                 {"role": "system", "content": "Bạn là một bác sĩ chuyên về thần kinh. Chỉ trả lời bằng JSON hợp lệ không có text thừa."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=1000,
             temperature=0.5,
+            response_format={"type": "json_object"}  # Đảm bảo định dạng JSON
         )
        
-        advice_text = response['choices'][0]['message']['content'].strip()
+        advice_text = response.choices[0].message.content.strip()
         
         # Làm sạch đầu ra
         if advice_text.startswith('```json'):
@@ -485,13 +485,16 @@ def get_advice():
         if advice_text.endswith('```'):
             advice_text = advice_text[:-3].strip()
         
+        # Bọc trong try-except để kiểm soát lỗi parse
         try:
-            # Kiểm tra xem có phải là JSON không
+            # Thêm bước kiểm tra xem đây có phải JSON không
             if not advice_text.startswith('[') and not advice_text.startswith('{'):
-                return jsonify({'advice': [{"title": "Không thể nhận lời khuyên", "details": "Vui lòng thử lại sau."}]}), 500
+                # Nếu không phải JSON, trả về một mảng mặc định
+                return jsonify({'advice': [{"title": "Không thể nhận lời khuyên", "details": "Vui lòng thử lại sau."}]})
             
             parsed_json = json.loads(advice_text)
             
+            # Kiểm tra và xử lý kết quả dựa trên cấu trúc
             if isinstance(parsed_json, dict):
                 # Nếu API trả về một object thay vì mảng
                 if "advice" in parsed_json:
@@ -499,6 +502,7 @@ def get_advice():
                 elif "data" in parsed_json: 
                     advice_list = parsed_json["data"]
                 else:
+                    # Chuyển đổi đối tượng thành mảng có một phần tử
                     advice_list = [{"title": key, "details": value} for key, value in parsed_json.items()]
             elif isinstance(parsed_json, list):
                 advice_list = parsed_json
@@ -510,8 +514,9 @@ def get_advice():
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}")
             print(f"Response text: {advice_text}")
-            return jsonify({'advice': [], 'error': 'Định dạng phản hồi không hợp lệ'}), 500
+            # Trả về một mảng rỗng với thông báo lỗi
+            return jsonify({'advice': [], 'error': 'Định dạng phản hồi không hợp lệ'})
             
     except Exception as e:
         print("GPT Error:", e)
-        return jsonify({'advice': [], 'error': 'Không thể lấy lời khuyên từ chuyên gia GPT.'}), 500
+        return jsonify({'advice': [], 'error': 'Không thể lấy lời khuyên từ chuyên gia GPT.'})
