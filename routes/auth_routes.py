@@ -401,6 +401,10 @@ def share_results():
         
 from openai import OpenAI
 from dotenv import load_dotenv
+import os
+import json
+from flask import jsonify, request
+
 load_dotenv()
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
@@ -409,21 +413,34 @@ def get_advice():
     data = request.get_json()
     features = data.get('features', [])
     prediction = data.get('prediction', '')
+    user_id = data.get('userId')
 
-    if prediction.lower() != 'positive' and prediction.lower() != 'parkinson detected':
+    if prediction != 1:
         return jsonify({'advice': 'Dữ liệu không yêu cầu lời khuyên.'})
 
-    prompt = f"""Bạn là một chuyên gia tư vấn y tế giàu kinh nghiệm, chuyên về bệnh Parkinson.
-    Một bệnh nhân có các đặc điểm sau: {features}.
-    Dựa trên kết quả chẩn đoán dương tính với Parkinson, hãy đưa ra một danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện
-    để giúp bệnh nhân quản lý và điều trị tình trạng này một cách hiệu quả. Hãy tập trung vào các khía cạnh như:
-    - Dùng thuốc và tuân thủ điều trị
-    - Thay đổi lối sống và chế độ ăn uống
-    - Tập luyện thể chất và phục hồi chức năng
-    - Hỗ trợ tâm lý và xã hội
-    - Theo dõi và quản lý triệu chứng
-    Đảm bảo lời khuyên của bạn dễ hiểu, thực tế và phù hợp với tình trạng của bệnh nhân."""
-
+    # Cải tiến prompt để đảm bảo nhận được JSON hợp lệ
+    prompt = f"""
+    Bạn là chuyên gia y tế về bệnh Parkinson.
+    Một bệnh nhân có các đặc điểm: {features}.
+    Dựa trên kết quả chẩn đoán, hãy đưa ra danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện.
+    
+    QUAN TRỌNG: 
+    - Phản hồi của bạn PHẢI là một mảng JSON hợp lệ CHÍNH XÁC như định dạng sau:
+    [
+        {{
+            "title": "Tiêu đề lời khuyên 1", 
+            "details": "Mô tả chi tiết lời khuyên 1"
+        }},
+        {{
+            "title": "Tiêu đề lời khuyên 2", 
+            "details": "Mô tả chi tiết lời khuyên 2"
+        }}
+    ]
+    
+    - KHÔNG bao gồm bất kỳ văn bản nào khác trước hoặc sau mảng JSON
+    - KHÔNG bao gồm markdown, dấu backtick, hoặc bất kỳ định dạng nào khác
+    - Chỉ trả về mảng JSON thuần túy
+    """
 
     try:
         response = client.chat.completions.create(
@@ -432,11 +449,41 @@ def get_advice():
                 {"role": "system", "content": "Bạn là một bác sĩ chuyên về thần kinh."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=500,
-            temperature=0.7
+            max_tokens=1000,
+            temperature=0.5,  # Giảm temperature để đảm bảo câu trả lời nhất quán
+            response_format={"type": "json_object"}  # Đảm bảo định dạng JSON
         )
-        advice = response.choices[0].message.content
-        return jsonify({'advice': advice})
+        
+        advice_text = response.choices[0].message.content.strip()
+        
+        # Xử lý trường hợp GPT trả kèm theo backtick hoặc định dạng markdown
+        if advice_text.startswith('```json'):
+            advice_text = advice_text[7:].strip()  # Bỏ ```json
+        if advice_text.endswith('```'):
+            advice_text = advice_text[:-3].strip() # Bỏ ``` cuối
+            
+        # Thử parse JSON
+        try:
+            # Xử lý trường hợp GPT trả về object bao bọc mảng
+            parsed_json = json.loads(advice_text)
+            if isinstance(parsed_json, dict) and 'advice' in parsed_json:
+                advice_list = parsed_json['advice']
+            elif isinstance(parsed_json, list):
+                advice_list = parsed_json
+            else:
+                advice_list = [parsed_json]  # Nếu là object đơn
+                
+            # Lưu vào database nếu cần
+            # if user_id:
+            #     save_to_database(user_id, features, prediction, advice_list)
+                
+            return jsonify({'advice': advice_list})
+        except json.JSONDecodeError as e:
+            print(f"JSON parse error: {e}")
+            print(f"Response text: {advice_text}")
+            # Trả về lỗi mã hóa JSON để frontend có thể hiển thị
+            return jsonify({'advice': [], 'error': 'Định dạng phản hồi không hợp lệ'}), 400
+            
     except Exception as e:
         print("GPT Error:", e)
-        return jsonify({'advice': 'Không thể lấy lời khuyên từ chuyên gia GPT.'}), 500
+        return jsonify({'advice': [], 'error': 'Không thể lấy lời khuyên từ chuyên gia GPT.'}), 500
