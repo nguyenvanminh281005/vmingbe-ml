@@ -34,12 +34,12 @@ app.config['FRONTEND_URL'] = 'http://localhost:3000'
 # Khởi tạo mail với app
 mail.init_app(app)
 
-best_model = '/model/best_model_w_grid.pkl'
+best_model = '/best_model_w_grid.pkl'
 
 # Định nghĩa đường dẫn model
 # MODEL_PATH = 'E:/KHTN2023/CS114/CS114_ML_DLM/CS114_ML_DLM/backend/model/best_model_w_grid.pkl'
-MODEL_PATH = f'E:/KHTN2023/CS114/CS114_ML_DLM/CS114_ML_DLM/backend{best_model}'
-SCALER_PATH = 'E:/KHTN2023/CS114/CS114_ML_DLM/CS114_ML_DLM/backend/model/scaler.pkl'
+MODEL_PATH = f'./model/{best_model}'
+SCALER_PATH = './model/scaler.pkl'
 
 # Load model và scaler
 try:
