@@ -468,14 +468,28 @@ def get_advice():
     try:
         response = client.responses.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Bạn là một bác sĩ chuyên về thần kinh. Chỉ trả lời bằng JSON hợp lệ không có text thừa."},
-                {"role": "user", "content": prompt}
-            ],
+            instructions="Bạn là một bác sĩ chuyên về thần kinh. Chỉ trả lời bằng JSON hợp lệ không có text thừa.",
+            input=f"""
+            Một bệnh nhân có các đặc điểm: {features}.
+            Dựa trên kết quả chẩn đoán, hãy đưa ra danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện.
+
+            Phản hồi của bạn PHẢI là một danh sách các lời khuyên theo định dạng sau:
+            [
+                {{
+                    "title": "Tiêu đề lời khuyên 1",
+                    "details": "Mô tả chi tiết lời khuyên 1"
+                }},
+                {{
+                    "title": "Tiêu đề lời khuyên 2",
+                    "details": "Mô tả chi tiết lời khuyên 2"
+                }}
+            ]
+            """,
             max_tokens=1000,
             temperature=0.5,
-            response_format={"type": "json_object"}  # Đảm bảo định dạng JSON
+            response_format={"type": "json_object"}
         )
+
        
         advice_text = response.choices[0].message.content.strip()
         
