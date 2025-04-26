@@ -15,6 +15,10 @@ from extensions import mail
 
 auth_bp = Blueprint('auth', __name__)
 
+@auth_bp.route('/')
+def home():
+    return "Welcome to Flask on Railway!"
+
 @auth_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
