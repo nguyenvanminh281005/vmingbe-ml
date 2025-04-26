@@ -258,10 +258,10 @@ def generate_email_html(doctor_name, message, prediction_results):
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
     
     # Xác định prediction dựa trên status
-    prediction = "Positive" if "Dương tính" in status else "Negative"
+    prediction = "Positive" if "Parkinson Detected" in status else "Negative"
     
     # Giả lập probability vì không có trong dữ liệu gốc
-    probability = 85.5 if "Dương tính" in status else 15.5
+    probability = 85.5 if "Parkinson Detected" in status else 15.5
     
     html = f"""
     <!DOCTYPE html>
@@ -359,24 +359,51 @@ def generate_email_html(doctor_name, message, prediction_results):
 def share_results():
     """API endpoint để xử lý yêu cầu chia sẻ kết quả qua email"""
     try:
-        data = request.json
+        data = request.get_json()
         recipient_email = data.get('recipientEmail')
         doctor_name = data.get('doctorName')
         message = data.get('message', '')
-        prediction_results = data.get('predictionResults')
+        prediction_results = data.get('predictionResults', {})
 
-        print("Dữ liệu nhận được:", data)  # In ra log để debug
+        print("Dữ liệu nhận được:", data)  # Debug log
 
         if not recipient_email or not doctor_name or not prediction_results:
-            return jsonify({
-                'status': 'error',
-                'message': 'Thiếu thông tin bắt buộc'
-            }), 400
+            return jsonify({'status': 'error', 'message': 'Thiếu thông tin bắt buộc'}), 400
 
-        # Tạo nội dung HTML
+        # Nếu chưa có status thì tự tính bằng mô hình
+        if 'status' not in prediction_results and 'features' in prediction_results:
+            model = current_app.config.get('MODEL')
+            scaler = current_app.config.get('SCALER')
+
+            if model is None or scaler is None:
+                return jsonify({'status': 'error', 'message': 'Model hoặc Scaler chưa được cấu hình'}), 500
+
+            features = prediction_results['features']
+
+            # Đảm bảo là list
+            if not isinstance(features, list):
+                return jsonify({'status': 'error', 'message': 'Dữ liệu features không hợp lệ'}), 400
+
+            features_array = np.array([features])
+            if features_array.shape[1] != scaler.n_features_in_:
+                return jsonify({'status': 'error', 'message': f'Số lượng đặc trưng không hợp lệ. Mong đợi {scaler.n_features_in_}, nhận {features_array.shape[1]}'}), 400
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                features_scaled = scaler.transform(features_array)
+
+            prediction = model.predict(features_scaled)[0]
+            status = "Parkinson Detected" if prediction == 1 else "Healthy"
+            prediction_results['status'] = status
+
+            # Gắn lại features nếu cần hiển thị
+            if isinstance(features, list):
+                for i, value in enumerate(features):
+                    prediction_results[f'Feature_{i+1}'] = value
+
+        # Tạo nội dung HTML email
         html_content = generate_email_html(doctor_name, message, prediction_results)
 
-        # Tạo email message sử dụng Flask-Mail
         msg = Message(
             subject="Kết quả dự đoán bệnh Parkinson",
             sender=current_app.config['MAIL_DEFAULT_SENDER'],
@@ -386,17 +413,12 @@ def share_results():
 
         mail.send(msg)
 
-        return jsonify({
-            'status': 'success',
-            'message': 'Email đã được gửi thành công'
-        })
+        return jsonify({'status': 'success', 'message': 'Email đã được gửi thành công'})
 
     except Exception as e:
         print(f"Lỗi khi gửi email: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': f'Có lỗi xảy ra: {str(e)}'
-        }), 500
+        return jsonify({'status': 'error', 'message': f'Có lỗi xảy ra: {str(e)}'}), 500
+
         
         
 from openai import OpenAI
@@ -415,7 +437,7 @@ def get_advice():
     prediction = data.get('prediction', '')
     user_id = data.get('userId')
 
-    if prediction != 1:
+    if prediction != "Parkinson Detected":
         return jsonify({'advice': 'Dữ liệu không yêu cầu lời khuyên.'})
 
     # Cải tiến prompt để đảm bảo nhận được JSON hợp lệ
