@@ -467,7 +467,7 @@ def get_advice():
     """
     
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.Completion.create(
             model="gpt-4",
             messages=[  # Đảm bảo rằng bạn sử dụng đúng dạng chat completion
                 {"role": "system", "content": "Bạn là một bác sĩ chuyên về thần kinh. Chỉ trả lời bằng JSON hợp lệ không có text thừa."},
