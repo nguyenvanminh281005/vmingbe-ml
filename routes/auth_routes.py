@@ -444,7 +444,7 @@ def get_advice():
     prediction = data.get('prediction', '')
     user_id = data.get('userId')
     
-    if prediction != 1:  # Thay "Parkinson Detected" bằng 1 để khớp với frontend
+    if prediction != "Parkinson Detected":  # Thay "Parkinson Detected" bằng 1 để khớp với frontend
         return jsonify({'advice': []})  # Trả về mảng rỗng thay vì chuỗi
     
     prompt = f"""
@@ -469,65 +469,20 @@ def get_advice():
         response = client.responses.create(
             model="gpt-4o-mini",
             instructions="Bạn là một bác sĩ chuyên về thần kinh. Chỉ trả lời bằng JSON hợp lệ không có text thừa.",
-            input=f"""
-            Một bệnh nhân có các đặc điểm: {features}.
-            Dựa trên kết quả chẩn đoán, hãy đưa ra danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện.
-
-            Phản hồi của bạn PHẢI là một danh sách các lời khuyên theo định dạng sau:
-            [
-                {{
-                    "title": "Tiêu đề lời khuyên 1",
-                    "details": "Mô tả chi tiết lời khuyên 1"
-                }},
-                {{
-                    "title": "Tiêu đề lời khuyên 2",
-                    "details": "Mô tả chi tiết lời khuyên 2"
-                }}
-            ]
-            """,
+            input=prompt,
         )
+        
+        # Lấy đúng text chứa JSON
+        raw_text = response.output[0].content[0].text
+        
+        # Bóc bỏ ```json ... ``` nếu có
+        json_str = re.sub(r"```(json)?", "", raw_text).strip()
+        
+        # Parse JSON
+        advice_list = json.loads(json_str)
+        
+        return jsonify({'advice': advice_list})
 
-       
-        advice_text = response.choices[0].message.content.strip()
-        
-        # Làm sạch đầu ra
-        if advice_text.startswith('```json'):
-            advice_text = advice_text[7:].strip()
-        if advice_text.endswith('```'):
-            advice_text = advice_text[:-3].strip()
-        
-        # Bọc trong try-except để kiểm soát lỗi parse
-        try:
-            # Thêm bước kiểm tra xem đây có phải JSON không
-            if not advice_text.startswith('[') and not advice_text.startswith('{'):
-                # Nếu không phải JSON, trả về một mảng mặc định
-                return jsonify({'advice': [{"title": "Không thể nhận lời khuyên", "details": "Vui lòng thử lại sau."}]})
-            
-            parsed_json = json.loads(advice_text)
-            
-            # Kiểm tra và xử lý kết quả dựa trên cấu trúc
-            if isinstance(parsed_json, dict):
-                # Nếu API trả về một object thay vì mảng
-                if "advice" in parsed_json:
-                    advice_list = parsed_json["advice"]
-                elif "data" in parsed_json: 
-                    advice_list = parsed_json["data"]
-                else:
-                    # Chuyển đổi đối tượng thành mảng có một phần tử
-                    advice_list = [{"title": key, "details": value} for key, value in parsed_json.items()]
-            elif isinstance(parsed_json, list):
-                advice_list = parsed_json
-            else:
-                advice_list = [{"title": "Lời khuyên chung", "details": str(parsed_json)}]
-            
-            return jsonify({'advice': advice_list})
-            
-        except json.JSONDecodeError as e:
-            print(f"JSON parse error: {e}")
-            print(f"Response text: {advice_text}")
-            # Trả về một mảng rỗng với thông báo lỗi
-            return jsonify({'advice': [], 'error': 'Định dạng phản hồi không hợp lệ'})
-            
     except Exception as e:
         print("GPT Error:", e)
         return jsonify({'advice': [], 'error': 'Không thể lấy lời khuyên từ chuyên gia GPT.'})
