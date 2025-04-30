@@ -38,13 +38,15 @@ def save_users(users):
         print(f"Lỗi khi lưu users: {e}")
         return False
 
+# Hàm tạo token
 def generate_token(username):
-    """Tạo JWT token cho người dùng"""
+    expiration = datetime.utcnow() + timedelta(hours=24)
     payload = {
         'username': username,
-        'exp': datetime.utcnow() + timedelta(seconds=TOKEN_EXPIRY)
+        'exp': expiration
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    secret_key = os.environ.get('SECRET_KEY', 'dev-key-should-be-changed')
+    return jwt.encode(payload, secret_key, algorithm='HS256')
 
 def decode_token(token):
     """Giải mã JWT token và trả về username"""

@@ -1,19 +1,27 @@
-from flask import Blueprint, request, jsonify, current_app
-from utils.auth_ultils import (
-    load_users, save_users, generate_token, decode_token, 
-    generate_password_reset_token, get_username_from_reset_token, remove_reset_token
-)
+from flask import Blueprint, request, jsonify, current_app, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Message
 import re
-from flask_cors import CORS
-import os
 from datetime import datetime
-from extensions import mail
-from flask import redirect
-
+from extensions import mail, db  # db import từ extensions, bạn phải khởi tạo db ở app chính
+from utils.auth_ultils import (
+    generate_token, decode_token, 
+    generate_password_reset_token, get_username_from_reset_token, remove_reset_token
+)
+import warnings
 
 auth_bp = Blueprint('auth', __name__)
+
+# Model User
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
 
 @auth_bp.route('/')
 def index():
@@ -23,8 +31,9 @@ def index():
 def register():
     data = request.get_json()
     
+    print("📥 Received data:", data)  # Debugging
     # Validate input fields
-    if not all(k in data for k in ('username', 'email', 'password')):
+    if not data or not all(k in data for k in ('username', 'email', 'password')):
         return jsonify({'error': 'Thiếu thông tin đăng ký'}), 400
     
     # Kiểm tra định dạng email hợp lệ
@@ -35,24 +44,24 @@ def register():
     if len(data['password']) < 6:
         return jsonify({'error': 'Mật khẩu phải có ít nhất 6 ký tự'}), 400
     
-    users = load_users() or {}  # Đảm bảo users luôn là dict
-    
-    # Check if username already exists
-    if data['username'] in users:
+    # Kiểm tra username đã tồn tại chưa
+    if User.query.filter_by(username=data['username']).first():
         return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
     
-    # Check if email already exists
-    if any(user.get('email') == data['email'] for user in users.values()):
+    # Kiểm tra email đã tồn tại chưa
+    if User.query.filter_by(email=data['email']).first():
         return jsonify({'error': 'Email đã được sử dụng'}), 400
     
-    # Create new user
-    users[data['username']] = {
-        'email': data['email'],
-        'password': generate_password_hash(data['password'])
-    }
-    
-    print("📌 Dữ liệu users trước khi lưu:", users)  # Debug
-    save_users(users)
+    # Tạo user mới
+    new_user = User(
+        username=data['username'],
+        email=data['email'],
+        password=generate_password_hash(data['password'])
+    )
+
+    # Lưu vào database
+    db.session.add(new_user)
+    db.session.commit()
     
     # Generate authentication token
     token = generate_token(data['username'])
@@ -66,31 +75,34 @@ def register():
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
+    
     print("📥 Received data:", data)  # Debugging
-
+    
     if not data:
-        return jsonify({'error': 'Không nhận được dữ liệu'}), 400  # Nếu request không có data
+        return jsonify({'error': 'Không nhận được dữ liệu'}), 400
 
-    # Validate input (chấp nhận cả email và username)
-    if not all(k in data for k in ('password',)):
+    # Cần ít nhất password và username hoặc email
+    if 'password' not in data:
         return jsonify({'error': 'Thiếu thông tin đăng nhập'}), 400
 
-    username = data.get('username') or data.get('email')  # Lấy username hoặc email
-    if not username:
+    username_or_email = data.get('username') or data.get('email')
+    if not username_or_email:
         return jsonify({'error': 'Thiếu username hoặc email'}), 400
 
-    users = load_users()
-    user = users.get(username) or next((u for u in users.values() if u["email"] == username), None)
+    # Tìm user theo username hoặc email
+    user = User.query.filter(
+        (User.username == username_or_email) | (User.email == username_or_email)
+    ).first()
 
-    if not user or not check_password_hash(user['password'], data['password']):
+    if not user or not check_password_hash(user.password, data['password']):
         return jsonify({'error': 'Tên đăng nhập hoặc mật khẩu không đúng'}), 401
 
-    token = generate_token(username)
+    token = generate_token(user.username)
 
     return jsonify({
         'message': 'Đăng nhập thành công',
         'token': token,
-        'username': username
+        'username': user.username
     }), 200
 
 
@@ -99,27 +111,19 @@ def forgot_password():
     data = request.get_json()
     
     # Validate input
-    if 'email' not in data:
+    if not data or 'email' not in data:
         return jsonify({'error': 'Vui lòng cung cấp email'}), 400
     
-    users = load_users()
-    user_found = None
-    username_found = None
+    # Tìm user theo email trong db
+    user = User.query.filter_by(email=data['email']).first()
     
-    # Find user by email
-    for username, user in users.items():
-        if user['email'] == data['email']:
-            user_found = user
-            username_found = username
-            break
-    
-    if not user_found:
+    if not user:
         return jsonify({'error': 'Email không tồn tại trong hệ thống'}), 404
     
-    # Generate reset token
-    reset_token = generate_password_reset_token(username_found)
+    # Generate reset token dựa trên username
+    reset_token = generate_password_reset_token(user.username)
     
-    # Send email with reset link
+    # Gửi email hướng dẫn reset password
     try:
         reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={reset_token}"
         msg = Message(
@@ -138,29 +142,34 @@ Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua emai
     
     return jsonify({'message': 'Email hướng dẫn đặt lại mật khẩu đã được gửi'}), 200
 
+
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json()
     
     # Validate input
-    if not all(k in data for k in ('token', 'new_password')):
+    if not data or not all(k in data for k in ('token', 'new_password')):
         return jsonify({'error': 'Thiếu thông tin đặt lại mật khẩu'}), 400
     
-    # Check if token is valid
+    # Kiểm tra token hợp lệ và lấy username
     username = get_username_from_reset_token(data['token'])
     if not username:
         return jsonify({'error': 'Token không hợp lệ hoặc đã hết hạn'}), 400
     
-    users = load_users()
+    # Tìm user trong db
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': 'Người dùng không tồn tại'}), 404
     
-    # Update password
-    users[username]['password'] = generate_password_hash(data['new_password'])
-    save_users(users)
+    # Cập nhật mật khẩu mới (hash)
+    user.password = generate_password_hash(data['new_password'])
+    db.session.commit()
     
-    # Remove used token
+    # Xóa token đã dùng
     remove_reset_token(data['token'])
     
     return jsonify({'message': 'Mật khẩu đã được đặt lại thành công'}), 200
+
 
 @auth_bp.route('/me', methods=['GET'])
 def get_user_profile():
@@ -175,23 +184,24 @@ def get_user_profile():
     if isinstance(username, str) and (username.endswith('đăng nhập lại.') or username.endswith('Vui lòng đăng nhập lại.')):
         return jsonify({'error': username}), 401
     
-    users = load_users()
+    user = User.query.filter_by(username=username).first()
     
-    if username not in users:
+    if not user:
         return jsonify({'error': 'Người dùng không tồn tại'}), 404
     
-    user = users[username]
-    
     return jsonify({
-        'username': username,
-        'email': user['email']
+        'username': user.username,
+        'email': user.email
     }), 200
     
+
 @auth_bp.route('/debug-users', methods=['GET'])
 def debug_users():
-    users = load_users()
-    print("📜 Debug users:", users)
-    return jsonify(users)
+    users = User.query.all()
+    users_data = {user.username: {'email': user.email, 'password': user.password} for user in users}
+    print("📜 Debug users:", users_data)
+    return jsonify(users_data)
+
 
 @auth_bp.route('/update-profile', methods=['PUT'])
 def update_profile():
@@ -206,21 +216,33 @@ def update_profile():
     if isinstance(username, str) and "Vui lòng đăng nhập lại" in username:
         return jsonify({'error': username}), 401
 
-    users = load_users()
+    user = User.query.filter_by(username=username).first()
     
-    if username not in users:
+    if not user:
         return jsonify({'error': 'Người dùng không tồn tại'}), 404
 
     data = request.get_json()
     
     # Cập nhật thông tin (chỉ cập nhật nếu có trong request)
-    users[username]['email'] = data.get('email', users[username]['email'])
-    if 'password' in data:
-        users[username]['password'] = generate_password_hash(data['password'])
+    if 'email' in data:
+        # Kiểm tra email mới có hợp lệ không (nếu cần)
+        if not re.match(r"^\S+@\S+\.\S+$", data['email']):
+            return jsonify({'error': 'Email không hợp lệ'}), 400
+        # Kiểm tra email đã tồn tại chưa (tránh trùng)
+        existing_user = User.query.filter_by(email=data['email']).first()
+        if existing_user and existing_user.username != username:
+            return jsonify({'error': 'Email đã được sử dụng'}), 400
+        user.email = data['email']
 
-    save_users(users)
+    if 'password' in data:
+        if len(data['password']) < 6:
+            return jsonify({'error': 'Mật khẩu phải có ít nhất 6 ký tự'}), 400
+        user.password = generate_password_hash(data['password'])
+
+    db.session.commit()
 
     return jsonify({'message': 'Cập nhật hồ sơ thành công'}), 200
+
 
 @auth_bp.route('/delete-account', methods=['DELETE'])
 def delete_account():
@@ -235,16 +257,17 @@ def delete_account():
     if isinstance(username, str) and "Vui lòng đăng nhập lại" in username:
         return jsonify({'error': username}), 401
 
-    users = load_users()
+    user = User.query.filter_by(username=username).first()
 
-    if username not in users:
+    if not user:
         return jsonify({'error': 'Người dùng không tồn tại'}), 404
 
-    # Xóa tài khoản khỏi danh sách
-    del users[username]
-    save_users(users)
+    # Xóa user khỏi database
+    db.session.delete(user)
+    db.session.commit()
 
     return jsonify({'message': 'Tài khoản đã bị xóa'}), 200
+
 
 
 # Hàm tạo nội dung email HTML

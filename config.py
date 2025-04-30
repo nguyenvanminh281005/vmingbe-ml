@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 class Config:
     # Cấu hình chung
@@ -14,15 +15,12 @@ class Config:
     MAIL_DEFAULT_SENDER = '23520945@gm.uit.edu.vn'
     
     # Cấu hình database
-    USER_DB_FILE = 'users.json'
-
-    @staticmethod
-    def ensure_db_file():
-        """ Đảm bảo file database tồn tại """
-        if not os.path.exists(Config.USER_DB_FILE):
-            with open(Config.USER_DB_FILE, 'w') as f:
-                f.write('{}')  # Ghi file JSON rỗng
-                print(f"Created {Config.USER_DB_FILE}")
-
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
     # Cấu hình frontend
     FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+    
+    # Cấu hình JWT
+    JWT_TOKEN_LOCATION = ['headers']
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)

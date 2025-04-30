@@ -1,7 +1,7 @@
 # đầu tiên là set up cho máy trước, chạy lệnh sau
 # Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 # tiếp theo thì cứ tạo file đuổi .ps1 là oke, rồi chạy mấy file này bằng lệnh cmd thôi
-git checkout main
+# git checkout main
 # Tự động add tất cả thay đổi
 git add .
 
