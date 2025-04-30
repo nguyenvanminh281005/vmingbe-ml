@@ -22,7 +22,7 @@ CORS(app)
 
 # Cấu hình database
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'  # Thay bằng URI của bạn
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:kjGxNrdhdKkdKwoLfzhOVCEJcDwhDZuY@shinkansen.proxy.rlwy.net:56884/railway"  # Railway cung cấp biến này
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway cung cấp biến này
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Cấu hình Flask-Mail
