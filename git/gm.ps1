@@ -16,3 +16,5 @@ git push -u origin main
 git checkout master
 
 git branch
+
+cls
