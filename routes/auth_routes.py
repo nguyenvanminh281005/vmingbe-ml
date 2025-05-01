@@ -191,7 +191,8 @@ def get_user_profile():
     
     return jsonify({
         'username': user.username,
-        'email': user.email
+        'email': user.email,
+        'createdAt': user.created_at.isoformat()  # 👈 thêm dòng này
     }), 200
     
 

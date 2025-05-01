@@ -40,8 +40,6 @@ mail.init_app(app)
 
 best_model = '/best_model_w_grid.pkl'
 
-# Định nghĩa đường dẫn model
-# MODEL_PATH = 'E:/KHTN2023/CS114/CS114_ML_DLM/CS114_ML_DLM/backend/model/best_model_w_grid.pkl'
 MODEL_PATH = f'./model/{best_model}'
 SCALER_PATH = './model/scaler.pkl'
 
