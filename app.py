@@ -21,8 +21,8 @@ app = Flask(__name__)
 CORS(app)
 
 # Cấu hình database
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'  # Thay bằng URI của bạnS
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway cung cấp biến này
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'  # Thay bằng URI của bạnS
+# app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway cung cấp biến này
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Cấu hình Flask-Mail
