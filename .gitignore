@@ -2,3 +2,4 @@
 appengine-generated/
 
 .env
+./git

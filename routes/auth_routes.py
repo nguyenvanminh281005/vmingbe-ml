@@ -109,65 +109,44 @@ def login():
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
     data = request.get_json()
-    
-    # Validate input
     if not data or 'email' not in data:
         return jsonify({'error': 'Vui lòng cung cấp email'}), 400
-    
-    # Tìm user theo email trong db
-    user = User.query.filter_by(email=data['email']).first()
-    
-    if not user:
-        return jsonify({'error': 'Email không tồn tại trong hệ thống'}), 404
-    
-    # Generate reset token dựa trên username
-    reset_token = generate_password_reset_token(user.username)
-    
-    # Gửi email hướng dẫn reset password
-    try:
-        reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={reset_token}"
-        msg = Message(
-            'Yêu cầu đặt lại mật khẩu',
-            recipients=[data['email']]
-        )
-        msg.body = f'''Để đặt lại mật khẩu, vui lòng truy cập đường dẫn sau:
-{reset_url}
 
-Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
-'''
-        mail.send(msg)
-    except Exception as e:
-        print(f"Email error: {str(e)}")
-        return jsonify({'error': 'Không thể gửi email'}), 500
-    
-    return jsonify({'message': 'Email hướng dẫn đặt lại mật khẩu đã được gửi'}), 200
+    user = User.query.filter_by(email=data['email']).first()
+    if user:
+        try:
+            reset_token = generate_password_reset_token(user.username)
+            reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={reset_token}"
+            msg = Message('Yêu cầu đặt lại mật khẩu', recipients=[data['email']])
+            msg.body = f"Để đặt lại mật khẩu, vui lòng truy cập: {reset_url}\nLiên kết có hiệu lực trong 1 giờ."
+            mail.send(msg)
+        except Exception as e:
+            current_app.logger.error(f"Email error: {str(e)}")
+    return jsonify({'message': 'Nếu email tồn tại, hướng dẫn đặt lại mật khẩu đã được gửi'}), 200
 
 
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.get_json()
-    
-    # Validate input
     if not data or not all(k in data for k in ('token', 'new_password')):
         return jsonify({'error': 'Thiếu thông tin đặt lại mật khẩu'}), 400
-    
-    # Kiểm tra token hợp lệ và lấy username
+
+    if len(data['new_password']) < 8:
+        return jsonify({'error': 'Mật khẩu phải có ít nhất 8 ký tự'}), 400
+
     username = get_username_from_reset_token(data['token'])
     if not username:
         return jsonify({'error': 'Token không hợp lệ hoặc đã hết hạn'}), 400
-    
-    # Tìm user trong db
+
     user = User.query.filter_by(username=username).first()
     if not user:
-        return jsonify({'error': 'Người dùng không tồn tại'}), 404
-    
-    # Cập nhật mật khẩu mới (hash)
+        return jsonify({'error': 'Token không hợp lệ'}), 400
+
     user.password = generate_password_hash(data['new_password'])
     db.session.commit()
-    
-    # Xóa token đã dùng
-    remove_reset_token(data['token'])
-    
+
+    # Nếu bạn lưu token đã dùng, xóa hoặc đánh dấu token ở đây
+
     return jsonify({'message': 'Mật khẩu đã được đặt lại thành công'}), 200
 
 
