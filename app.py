@@ -39,28 +39,41 @@ app.config['FRONTEND_URL'] = 'http://localhost:3000'
 db.init_app(app)
 mail.init_app(app)
 
-best_model = '/best_model_w_grid.pkl'
+# Load multiple models and scaler
+MODEL_DIR = './model'
+SCALER_PATH = os.path.join(MODEL_DIR, 'scaler.pkl')
 
-MODEL_PATH = f'./model/{best_model}'
-SCALER_PATH = './model/scaler.pkl'
+MODEL_FILES = {
+    'xgboost': 'parkinsons_xgboost_model.pkl',
+    'random_forest': 'model_ran_ser.pkl',
+    'svm': 'parkinsons_randomforest_sklearn_model.pkl',
+    'best': 'best_model_w_grid.pkl'  # fallback hoặc mặc định
+}
 
-# Load model và scaler
 try:
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-        raise FileNotFoundError("Model hoặc Scaler không tồn tại. Kiểm tra lại đường dẫn.")
+    if not os.path.exists(SCALER_PATH):
+        raise FileNotFoundError("Scaler không tồn tại.")
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        model = joblib.load(MODEL_PATH)
         scaler = joblib.load(SCALER_PATH)
     
-    app.config['MODEL'] = model
+    # Load all models
+    models = {}
+    for model_name, file_name in MODEL_FILES.items():
+        model_path = os.path.join(MODEL_DIR, file_name)
+        if os.path.exists(model_path):
+            models[model_name] = joblib.load(model_path)
+        else:
+            print(f"⚠️ Không tìm thấy model: {file_name}")
+
+    app.config['MODELS'] = models
     app.config['SCALER'] = scaler
-    print("✅ Model và Scaler đã load thành công!")
+    print(f"✅ Đã load {len(models)} mô hình và scaler thành công!")
 
 except Exception as e:
-    print(f"❌ Lỗi khi tải model: {str(e)}")
-    app.config['MODEL'] = None
+    print(f"❌ Lỗi khi tải mô hình hoặc scaler: {str(e)}")
+    app.config['MODELS'] = {}
     app.config['SCALER'] = None
 
 # Đăng ký blueprint

@@ -5,8 +5,6 @@ import jwt
 import secrets
 from datetime import datetime, timedelta
 
-# Đường dẫn đến file lưu trữ dữ liệu người dùng
-USERS_FILE = 'backend/users.json'
 # Khóa bí mật để tạo JWT
 SECRET_KEY = 'vming1234'  # Nên lưu trong biến môi trường
 # Thời gian token hết hạn (tính bằng giây)
