@@ -261,7 +261,7 @@ def generate_email_html(doctor_name, message, prediction_results):
     <html>
     <body>
         <h2>Chào Bác sĩ {doctor_name},</h2>
-        <p>Bệnh nhân đã chia sẻ kết quả dự đoán bệnh Parkinson với bạn.</p>
+        <p>Bệnh nhân đã chia sẻ kết quả dự đoán bệnh Alzheimer với bạn.</p>
         <p><strong>Trạng thái dự đoán:</strong> {status}</p>
         {f"<p><strong>Lời nhắn từ bệnh nhân:</strong> {message}</p>" if message else ""}
         <h3>Chi tiết đặc trưng:</h3>
@@ -311,14 +311,14 @@ def share_results():
                 features_scaled = scaler.transform(features_array)
 
             prediction = model.predict(features_scaled)[0]
-            status = "Parkinson Detected" if prediction == 1 else "Healthy"
+            status = "Disease Detected" if prediction == 1 else "Healthy"
             prediction_results['status'] = status
 
         # Tạo nội dung HTML email
         html_content = generate_email_html(doctor_name, message, prediction_results)
 
         msg = Message(
-            subject="Kết quả dự đoán bệnh Parkinson",
+            subject="Kết quả dự đoán bệnh Alzheimer",
             sender=current_app.config['MAIL_DEFAULT_SENDER'],
             recipients=[recipient_email],
             html=html_content
@@ -352,11 +352,11 @@ def get_advice():
     prediction = data.get('prediction', '')
     user_id = data.get('userId')
     
-    if prediction != "Parkinson Detected":  # Thay "Parkinson Detected" bằng 1 để khớp với frontend
+    if prediction != "Disease Detected":  # Thay "Disease Detected" bằng 1 để khớp với frontend
         return jsonify({'advice': []})  # Trả về mảng rỗng thay vì chuỗi
     
     prompt = f"""
-    Bạn là chuyên gia y tế về bệnh Parkinson.
+    Bạn là chuyên gia y tế về bệnh Alzheimer.
     Một bệnh nhân có các đặc điểm: {features}.
     Dựa trên kết quả chẩn đoán, hãy đưa ra danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện.
    

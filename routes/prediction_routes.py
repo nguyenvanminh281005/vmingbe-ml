@@ -35,7 +35,7 @@ def predict():
             features = scaler.transform(features)
 
         prediction = model.predict(features)[0]
-        result = "Parkinson Detected" if prediction == 1 else "Healthy"
+        result = "Disease Detected" if prediction == 1 else "Healthy"
 
         print(f"[{model_key}] Prediction Result:", result)
         return jsonify({'prediction': result})

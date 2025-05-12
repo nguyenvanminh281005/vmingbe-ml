@@ -21,9 +21,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Cấu hình database
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'  # Thay bằng URI của bạnS
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yourdatabase.db'  # Thay bằng URI của bạnS
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway cung cấp biến này
+# app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # Railway cung cấp biến này
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Cấu hình Flask-Mail
@@ -44,10 +44,11 @@ MODEL_DIR = './model'
 SCALER_PATH = os.path.join(MODEL_DIR, 'scaler.pkl')
 
 MODEL_FILES = {
-    'xgboost': 'parkinsons_xgboost_model.pkl',
-    'random_forest': 'model_ran_ser.pkl',
-    'svm': 'parkinsons_randomforest_sklearn_model.pkl',
-    'best': 'best_model_w_grid.pkl'  # fallback hoặc mặc định
+    'xgboost_lib': 'xgboost_lib.pkl',
+    'random_forest_lib': 'random_forest_lib.pkl',
+    'xgboost_scr': 'xgboost_scr.pkl',
+    'random_forest_scr': 'random_forest_scr.pkl',
+    'best_model': 'best_model.pkl'  # fallback hoặc mặc định
 }
 
 try:
