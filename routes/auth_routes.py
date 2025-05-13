@@ -357,8 +357,11 @@ def get_advice():
     
     prompt = f"""
     Bạn là chuyên gia y tế về bệnh Alzheimer.
-    Một bệnh nhân có các đặc điểm: {features}.
-    Dựa trên kết quả chẩn đoán, hãy đưa ra danh sách các lời khuyên cụ thể, chi tiết và dễ thực hiện.
+    Một bệnh nhân có các chỉ số về ['ADL', 'MMSE', 'FunctionalAssessment', 'Disorientation',
+       'PersonalityChanges', 'Smoking', 'HeadInjury', 'CholesterolTotal'] sau khi xét nghiệm được lần lượt là : {features}.
+    Dựa trên kết quả chẩn đoán, hãy đưa ra danh sách gồm 3 lời khuyên cụ thể mà bạn thấy là phù hợp nhất, 
+    chi tiết và dễ thực hiện cộng thêm 3 lời khuyên về việc nên sử dụng thuốc gì như thế nào.
+    Có thể phân tích chỉ rõ tại sao lại có lời khuyên đó dựa trên chỉ số được cung cấp.
    
     Phản hồi của bạn PHẢI là một danh sách các lời khuyên theo định dạng sau:
     [
