@@ -34,6 +34,7 @@ def predict():
             warnings.simplefilter("ignore")
             features = scaler.transform(features)
         print('bibi')
+        print(f"scaler u i u    jjwjweh {features}")
         prediction = model.predict(features)[0]
         result = "Disease Detected" if prediction == 1 else "Healthy"
         print('hihihi')
