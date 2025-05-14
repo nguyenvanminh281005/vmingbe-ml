@@ -33,10 +33,10 @@ def predict():
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             features = scaler.transform(features)
-
+        print('bibi')
         prediction = model.predict(features)[0]
         result = "Disease Detected" if prediction == 1 else "Healthy"
-
+        print('hihihi')
         print(f"[{model_key}] Prediction Result:", result)
         return jsonify({'prediction': result})
     
